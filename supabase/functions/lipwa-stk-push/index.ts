@@ -67,6 +67,9 @@ serve(async (req) => {
       throw new Error('Failed to create payment record');
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
     const response = await fetch('https://pay.lipwa.app/api/payments', {
       method: 'POST',
       headers: {
@@ -80,7 +83,9 @@ serve(async (req) => {
         phone_number: formattedPhone,
         api_ref: metaRef,
       }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     const data = await response.json();
 
