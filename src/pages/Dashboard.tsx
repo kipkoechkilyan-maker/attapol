@@ -342,16 +342,16 @@ const UpgradeModal = ({ onClose, onUpgrade }: { onClose: () => void; onUpgrade: 
 );
 
 const fakeEarners = [
-  { name: "James", phone: "0712***890", location: "Nairobi", amount: 95 },
-  { name: "Mary", phone: "0798***234", location: "Mombasa", amount: 85 },
-  { name: "David", phone: "0723***567", location: "Kisumu", amount: 120 },
-  { name: "Sarah", phone: "0745***112", location: "Eldoret", amount: 75 },
-  { name: "Michael", phone: "0701***445", location: "Nakuru", amount: 105 },
-  { name: "Grace", phone: "0733***678", location: "Thika", amount: 88 },
-  { name: "Peter", phone: "0756***321", location: "Nyeri", amount: 62 },
-  { name: "Ann", phone: "0710***889", location: "Machakos", amount: 95 },
-  { name: "Kevin", phone: "0769***102", location: "Naivasha", amount: 110 },
-  { name: "Lucy", phone: "0741***556", location: "Kisii", amount: 82 },
+  { name: "James", phone: "0712***890", location: "Nairobi", amount: 1250 },
+  { name: "Mary", phone: "0798***234", location: "Mombasa", amount: 1800 },
+  { name: "David", phone: "0723***567", location: "Kisumu", amount: 1500 },
+  { name: "Sarah", phone: "0745***112", location: "Eldoret", amount: 2100 },
+  { name: "Michael", phone: "0701***445", location: "Nakuru", amount: 1350 },
+  { name: "Grace", phone: "0733***678", location: "Thika", amount: 1600 },
+  { name: "Peter", phone: "0756***321", location: "Nyeri", amount: 1150 },
+  { name: "Ann", phone: "0710***889", location: "Machakos", amount: 1900 },
+  { name: "Kevin", phone: "0769***102", location: "Naivasha", amount: 1450 },
+  { name: "Lucy", phone: "0741***556", location: "Kisii", amount: 1750 },
 ];
 
 const Dashboard = () => {
@@ -432,7 +432,7 @@ const Dashboard = () => {
             className="animate-slide-in-right bg-card border border-border rounded-lg px-3 py-2 shadow-card"
           >
             <p className="text-xs text-foreground">
-              <span className="font-bold text-primary">{n.name}</span> ({n.phone}) just earned{" "}
+              <span className="font-bold text-primary">{n.name}</span> ({n.phone}) just withdrew{" "}
               <span className="font-bold text-primary">Ksh {n.amount}</span>
             </p>
           </div>
