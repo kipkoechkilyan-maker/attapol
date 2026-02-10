@@ -70,13 +70,13 @@ const Upgrade = () => {
         setPaymentState('failed');
         clearInterval(interval);
       }
-    }, 5000);
+    }, 3000);
 
     const timeout = setTimeout(() => {
       if (paymentState === 'waiting') {
         setPaymentState('failed');
       }
-    }, 120000);
+    }, 60000);
 
     return () => {
       supabase.removeChannel(channel);
