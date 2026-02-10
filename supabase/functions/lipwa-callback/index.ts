@@ -26,7 +26,6 @@ serve(async (req) => {
     const body = await req.json();
     console.log('Lipwa callback received:', JSON.stringify(body));
 
-    // Lipwa sends: api_ref, status, phone_number, amount, reference etc.
     const apiRef = body.api_ref;
     const paymentStatus = body.payment_status || body.status;
     const lipwaReference = body.reference || body.checkout_request_id || '';
@@ -54,7 +53,6 @@ serve(async (req) => {
     const isSuccess = paymentStatus === 'Success' || paymentStatus === 'success' || paymentStatus === 'COMPLETED' || paymentStatus === 'completed';
     const newStatus = isSuccess ? 'completed' : 'failed';
 
-    // Update payment status
     await supabase.from('payments').update({
       status: newStatus,
       lipwa_reference: lipwaReference,
@@ -64,25 +62,57 @@ serve(async (req) => {
     if (isSuccess) {
       const config = packageConfig[payment.package_name] || packageConfig.basic;
 
-      const { data: existingAccount } = await supabase
-        .from('user_accounts')
-        .select('*')
-        .eq('phone_number', payment.phone_number)
-        .maybeSingle();
+      // Extract user_id from api_ref if present (format: UPGRADE-pkg-timestamp|uid:user_id)
+      let userId: string | null = null;
+      if (apiRef.includes('|uid:')) {
+        userId = apiRef.split('|uid:')[1];
+      }
 
-      if (existingAccount) {
-        await supabase.from('user_accounts').update({
-          account_type: payment.package_name,
-          surveys_per_day: config.surveys_per_day,
-          min_withdrawal: config.min_withdrawal,
-        }).eq('phone_number', payment.phone_number);
+      if (userId) {
+        // Try to find existing account by user_id
+        const { data: existingAccount } = await supabase
+          .from('user_accounts')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (existingAccount) {
+          await supabase.from('user_accounts').update({
+            account_type: payment.package_name,
+            surveys_per_day: config.surveys_per_day,
+            min_withdrawal: config.min_withdrawal,
+          }).eq('user_id', userId);
+        } else {
+          await supabase.from('user_accounts').insert({
+            user_id: userId,
+            phone_number: payment.phone_number,
+            account_type: payment.package_name,
+            surveys_per_day: config.surveys_per_day,
+            min_withdrawal: config.min_withdrawal,
+          });
+        }
       } else {
-        await supabase.from('user_accounts').insert({
-          phone_number: payment.phone_number,
-          account_type: payment.package_name,
-          surveys_per_day: config.surveys_per_day,
-          min_withdrawal: config.min_withdrawal,
-        });
+        // Fallback: use phone_number
+        const { data: existingAccount } = await supabase
+          .from('user_accounts')
+          .select('*')
+          .eq('phone_number', payment.phone_number)
+          .maybeSingle();
+
+        if (existingAccount) {
+          await supabase.from('user_accounts').update({
+            account_type: payment.package_name,
+            surveys_per_day: config.surveys_per_day,
+            min_withdrawal: config.min_withdrawal,
+          }).eq('phone_number', payment.phone_number);
+        } else {
+          await supabase.from('user_accounts').insert({
+            phone_number: payment.phone_number,
+            account_type: payment.package_name,
+            surveys_per_day: config.surveys_per_day,
+            min_withdrawal: config.min_withdrawal,
+          });
+        }
       }
     }
 

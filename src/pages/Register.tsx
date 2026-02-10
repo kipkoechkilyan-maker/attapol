@@ -11,10 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Register = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -24,15 +28,56 @@ const Register = () => {
     terms: false,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock registration - just navigate to dashboard
-    localStorage.setItem("attapoll_user", JSON.stringify({
-      name: `${form.firstName} ${form.lastName}`,
+    setLoading(true);
+
+    const { data, error } = await supabase.auth.signUp({
       email: form.email,
-      education: form.education,
-    }));
-    navigate("/dashboard");
+      password: form.password,
+      options: {
+        emailRedirectTo: window.location.origin,
+        data: {
+          first_name: form.firstName,
+          last_name: form.lastName,
+        },
+      },
+    });
+
+    if (error) {
+      setLoading(false);
+      toast({ title: "Registration failed", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    // Update profile with name
+    if (data.user) {
+      await supabase.from("profiles").update({
+        first_name: form.firstName,
+        last_name: form.lastName,
+      }).eq("user_id", data.user.id);
+
+      // Create user_account for this user
+      await supabase.from("user_accounts").insert({
+        user_id: data.user.id,
+        phone_number: "",
+        account_type: "free",
+        surveys_per_day: 1,
+        min_withdrawal: 0,
+        balance: 0,
+      });
+    }
+
+    setLoading(false);
+
+    if (data.session) {
+      navigate("/dashboard");
+    } else {
+      toast({
+        title: "Check your email",
+        description: "We sent you a confirmation link. Please verify your email to log in.",
+      });
+    }
   };
 
   return (
@@ -57,6 +102,7 @@ const Register = () => {
               onChange={(e) => setForm({ ...form, firstName: e.target.value })}
               className="bg-secondary/50 border-border h-12"
               placeholder="Enter first name"
+              disabled={loading}
             />
           </div>
 
@@ -68,6 +114,7 @@ const Register = () => {
               onChange={(e) => setForm({ ...form, lastName: e.target.value })}
               className="bg-secondary/50 border-border h-12"
               placeholder="Enter last name"
+              disabled={loading}
             />
           </div>
 
@@ -97,6 +144,7 @@ const Register = () => {
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               className="bg-secondary/50 border-border h-12"
               placeholder="Enter email"
+              disabled={loading}
             />
           </div>
 
@@ -109,6 +157,7 @@ const Register = () => {
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               className="bg-secondary/50 border-border h-12 pr-10"
               placeholder="Enter password"
+              disabled={loading}
             />
             <button
               type="button"
@@ -130,10 +179,10 @@ const Register = () => {
 
           <Button
             type="submit"
-            disabled={!form.terms}
+            disabled={!form.terms || loading}
             className="w-full h-12 gradient-green text-primary-foreground font-semibold text-base hover:opacity-90 transition-opacity"
           >
-            Sign Up
+            {loading ? "Creating account..." : "Sign Up"}
           </Button>
 
           <p className="text-center text-sm text-muted-foreground">

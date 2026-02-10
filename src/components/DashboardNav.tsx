@@ -1,17 +1,19 @@
 import { BarChart3 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const DashboardNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   const links = [
     { label: "HOME", path: "/dashboard" },
     { label: "PROFILE", path: "/profile" },
     { label: "REFERRALS", path: "/referrals" },
   ];
 
-  const handleLogout = () => {
-    localStorage.removeItem("attapoll_user");
+  const handleLogout = async () => {
+    await signOut();
     navigate("/");
   };
 

@@ -22,7 +22,7 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { amount, phone_number, package_name } = await req.json();
+    const { amount, phone_number, package_name, user_id } = await req.json();
 
     if (!amount || !phone_number || !package_name) {
       return new Response(
@@ -47,7 +47,9 @@ serve(async (req) => {
     const apiRef = `UPGRADE-${package_name}-${Date.now()}`;
     const callbackUrl = `${SUPABASE_URL}/functions/v1/lipwa-callback`;
 
-    // Create payment record in DB
+    // Store user_id in api_ref metadata for callback to use
+    const metaRef = user_id ? `${apiRef}|uid:${user_id}` : apiRef;
+
     const { data: paymentRecord, error: dbError } = await supabase
       .from('payments')
       .insert({
@@ -55,7 +57,7 @@ serve(async (req) => {
         amount: Number(amount),
         package_name,
         status: 'pending',
-        api_ref: apiRef,
+        api_ref: metaRef,
       })
       .select()
       .single();
@@ -65,7 +67,6 @@ serve(async (req) => {
       throw new Error('Failed to create payment record');
     }
 
-    // Send STK Push via Lipwa
     const response = await fetch('https://pay.lipwa.app/api/payments', {
       method: 'POST',
       headers: {
@@ -77,20 +78,19 @@ serve(async (req) => {
         callback_url: callbackUrl,
         channel_id: LIPWA_CHANNEL_ID,
         phone_number: formattedPhone,
-        api_ref: apiRef,
+        api_ref: metaRef,
       }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      // Update payment as failed
       await supabase.from('payments').update({ status: 'failed' }).eq('id', paymentRecord.id);
       throw new Error(`Lipwa API error [${response.status}]: ${JSON.stringify(data)}`);
     }
 
     return new Response(
-      JSON.stringify({ success: true, payment_id: paymentRecord.id, api_ref: apiRef }),
+      JSON.stringify({ success: true, payment_id: paymentRecord.id, api_ref: metaRef }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: unknown) {
