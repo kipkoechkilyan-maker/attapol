@@ -50,6 +50,39 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          phone_number: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone_number?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone_number?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_accounts: {
         Row: {
           account_type: string
@@ -62,6 +95,7 @@ export type Database = {
           surveys_completed_today: number
           surveys_per_day: number
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           account_type?: string
@@ -74,6 +108,7 @@ export type Database = {
           surveys_completed_today?: number
           surveys_per_day?: number
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           account_type?: string
@@ -86,6 +121,7 @@ export type Database = {
           surveys_completed_today?: number
           surveys_per_day?: number
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

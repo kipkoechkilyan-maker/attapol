@@ -3,20 +3,27 @@ import { Link, useNavigate } from "react-router-dom";
 import { BarChart3, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem("attapoll_user", JSON.stringify({
-      name: "User",
-      email,
-    }));
-    navigate("/dashboard");
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) {
+      toast({ title: "Login failed", description: error.message, variant: "destructive" });
+    } else {
+      navigate("/dashboard");
+    }
   };
 
   return (
@@ -42,6 +49,7 @@ const Login = () => {
               onChange={(e) => setEmail(e.target.value)}
               className="bg-secondary/50 border-border h-12"
               placeholder="Enter email"
+              disabled={loading}
             />
           </div>
 
@@ -54,6 +62,7 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               className="bg-secondary/50 border-border h-12 pr-10"
               placeholder="Enter password"
+              disabled={loading}
             />
             <button
               type="button"
@@ -66,9 +75,10 @@ const Login = () => {
 
           <Button
             type="submit"
+            disabled={loading}
             className="w-full h-12 gradient-green text-primary-foreground font-semibold text-base hover:opacity-90 transition-opacity"
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </Button>
 
           <p className="text-center text-sm text-muted-foreground">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Wallet, Tag, User, RefreshCw, Clock, CheckCircle2, HelpCircle, Banknote, Lock, ArrowUpCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import DashboardNav from "@/components/DashboardNav";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const surveys = [
   {
@@ -341,54 +343,50 @@ const UpgradeModal = ({ onClose, onUpgrade }: { onClose: () => void; onUpgrade: 
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user, account, refreshAccount } = useAuth();
   const [activeSurvey, setActiveSurvey] = useState<typeof surveys[0] | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [surveysCompletedToday, setSurveysCompletedToday] = useState(0);
-  const [accountType, setAccountType] = useState("free");
-  const [balance, setBalance] = useState(0);
 
+  const accountType = account?.account_type || "free";
+  const balance = account?.balance || 0;
   const pkg = packageLimits[accountType] || packageLimits.free;
 
-  useEffect(() => {
-    const stored = localStorage.getItem("attapoll_account");
-    if (stored) setAccountType(stored);
-
-    const bal = localStorage.getItem("attapoll_balance");
-    if (bal) setBalance(Number(bal));
-
-    const today = new Date().toDateString();
-    const dailyData = localStorage.getItem("attapoll_daily_surveys");
-    if (dailyData) {
-      const parsed = JSON.parse(dailyData);
-      if (parsed.date === today) {
-        setSurveysCompletedToday(parsed.count);
-      } else {
-        localStorage.setItem("attapoll_daily_surveys", JSON.stringify({ date: today, count: 0 }));
+  // Load surveys completed today from DB
+  useState(() => {
+    if (account) {
+      const today = new Date().toISOString().split("T")[0];
+      if (account.last_survey_date === today) {
+        setSurveysCompletedToday(account.surveys_completed_today);
       }
     }
-  }, []);
+  });
 
   const handleTakeSurvey = (survey: typeof surveys[0]) => {
-    if (surveysCompletedToday >= pkg.surveys) {
+    const limit = account?.surveys_per_day || 1;
+    if (surveysCompletedToday >= limit) {
       setShowUpgradeModal(true);
       return;
     }
     setActiveSurvey(survey);
   };
 
-  const handleSurveyComplete = () => {
+  const handleSurveyComplete = async () => {
+    if (!user || !account) return;
     const newCount = surveysCompletedToday + 1;
     setSurveysCompletedToday(newCount);
-    const today = new Date().toDateString();
-    localStorage.setItem("attapoll_daily_surveys", JSON.stringify({ date: today, count: newCount }));
 
-    // Add payout to balance
-    if (activeSurvey) {
-      const newBalance = balance + activeSurvey.payout;
-      setBalance(newBalance);
-      localStorage.setItem("attapoll_balance", String(newBalance));
-    }
+    const today = new Date().toISOString().split("T")[0];
+    const newBalance = balance + (activeSurvey?.payout || 0);
+
+    await supabase.from("user_accounts").update({
+      surveys_completed_today: newCount,
+      last_survey_date: today,
+      balance: newBalance,
+    }).eq("user_id", user.id);
+
+    await refreshAccount();
   };
 
   const canWithdraw = accountType !== "free" && balance >= pkg.minWithdraw;
@@ -414,9 +412,6 @@ const Dashboard = () => {
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Tag className="h-4 w-4" /> Loyalty Points: <span className="text-foreground font-bold">0</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle2 className="h-4 w-4" /> Surveys today: <span className="text-primary font-bold">{surveysCompletedToday}/{pkg.surveys}</span>
               </div>
               {accountType !== "free" && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">

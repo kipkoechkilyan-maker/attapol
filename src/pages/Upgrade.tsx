@@ -11,6 +11,7 @@ import {
 import DashboardNav from "@/components/DashboardNav";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const packages = [
   { name: "Business Basic", key: "basic", price: 200, surveys: 10, earningsMonth: 8000, dailyIncome: 250, minWithdraw: 3000, earningsSurvey: "Ksh 50 - 100" },
@@ -23,12 +24,12 @@ type PaymentState = 'idle' | 'sending' | 'waiting' | 'success' | 'failed';
 
 const Upgrade = () => {
   const { toast } = useToast();
+  const { user, refreshAccount } = useAuth();
   const [selectedPackage, setSelectedPackage] = useState<typeof packages[0] | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [paymentState, setPaymentState] = useState<PaymentState>('idle');
   const [paymentId, setPaymentId] = useState<string | null>(null);
 
-  // Subscribe to payment status changes via realtime
   useEffect(() => {
     if (!paymentId || paymentState !== 'waiting') return;
 
@@ -42,14 +43,11 @@ const Upgrade = () => {
           table: 'payments',
           filter: `id=eq.${paymentId}`,
         },
-        (payload) => {
+        async (payload) => {
           const newStatus = payload.new.status;
           if (newStatus === 'completed') {
             setPaymentState('success');
-            // Update localStorage with new account type
-            if (selectedPackage) {
-              localStorage.setItem("attapoll_account", selectedPackage.key);
-            }
+            await refreshAccount();
           } else if (newStatus === 'failed') {
             setPaymentState('failed');
           }
@@ -57,7 +55,6 @@ const Upgrade = () => {
       )
       .subscribe();
 
-    // Also poll every 5s as fallback
     const interval = setInterval(async () => {
       const { data } = await supabase
         .from('payments')
@@ -67,9 +64,7 @@ const Upgrade = () => {
 
       if (data?.status === 'completed') {
         setPaymentState('success');
-        if (selectedPackage) {
-          localStorage.setItem("attapoll_account", selectedPackage.key);
-        }
+        await refreshAccount();
         clearInterval(interval);
       } else if (data?.status === 'failed') {
         setPaymentState('failed');
@@ -77,7 +72,6 @@ const Upgrade = () => {
       }
     }, 5000);
 
-    // Timeout after 2 minutes
     const timeout = setTimeout(() => {
       if (paymentState === 'waiting') {
         setPaymentState('failed');
@@ -89,7 +83,7 @@ const Upgrade = () => {
       clearInterval(interval);
       clearTimeout(timeout);
     };
-  }, [paymentId, paymentState, selectedPackage]);
+  }, [paymentId, paymentState]);
 
   const handlePayment = async () => {
     if (!selectedPackage || !phoneNumber) return;
@@ -108,6 +102,7 @@ const Upgrade = () => {
           amount: selectedPackage.price,
           phone_number: phoneNumber,
           package_name: selectedPackage.key,
+          user_id: user?.id,
         },
       });
 
@@ -186,7 +181,6 @@ const Upgrade = () => {
             </DialogTitle>
           </DialogHeader>
 
-          {/* SUCCESS STATE */}
           {paymentState === 'success' && (
             <div className="text-center space-y-4 py-4">
               <CheckCircle2 className="h-20 w-20 text-primary mx-auto" />
@@ -201,7 +195,6 @@ const Upgrade = () => {
             </div>
           )}
 
-          {/* FAILED STATE */}
           {paymentState === 'failed' && (
             <div className="text-center space-y-4 py-4">
               <XCircle className="h-20 w-20 text-destructive mx-auto" />
@@ -220,7 +213,6 @@ const Upgrade = () => {
             </div>
           )}
 
-          {/* WAITING STATE */}
           {paymentState === 'waiting' && (
             <div className="text-center space-y-4 py-4">
               <Loader2 className="h-16 w-16 text-primary mx-auto animate-spin" />
@@ -235,7 +227,6 @@ const Upgrade = () => {
             </div>
           )}
 
-          {/* IDLE / SENDING STATE */}
           {(paymentState === 'idle' || paymentState === 'sending') && (
             <div className="space-y-4">
               <div className="gradient-green rounded-lg p-4 text-center">
