@@ -297,22 +297,22 @@ const SurveyModal = ({ survey, onClose, onComplete }: { survey: typeof surveys[0
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-card rounded-xl p-6 max-w-lg w-full shadow-card">
+      <div className="bg-card rounded-xl p-5 sm:p-6 w-[calc(100%-2rem)] max-w-lg shadow-card mx-auto">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-display text-lg font-bold text-primary">{survey.name}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl">&times;</button>
+          <h2 className="font-display text-base sm:text-lg font-bold text-primary truncate pr-2">{survey.name}</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl shrink-0">&times;</button>
         </div>
         <div className="mb-2 text-xs text-muted-foreground">Question {current + 1} of {questions.length}</div>
         <div className="w-full bg-secondary rounded-full h-2 mb-4">
           <div className="gradient-green h-2 rounded-full transition-all" style={{ width: `${((current + 1) / questions.length) * 100}%` }} />
         </div>
-        <p className="text-foreground mb-4 font-medium">{questions[current].q}</p>
+        <p className="text-foreground mb-4 font-medium text-sm sm:text-base">{questions[current].q}</p>
         <div className="space-y-2">
           {questions[current].options.map((opt) => (
             <button
               key={opt}
               onClick={() => handleAnswer(opt)}
-              className="w-full text-left p-3 rounded-lg border border-border bg-secondary/50 hover:bg-primary/20 hover:border-primary transition-colors text-foreground"
+              className="w-full text-left p-3 rounded-lg border border-border bg-secondary/50 hover:bg-primary/20 hover:border-primary transition-colors text-foreground text-sm sm:text-base"
             >
               {opt}
             </button>
@@ -526,7 +526,7 @@ const Dashboard = () => {
 
       {/* Withdraw Dialog */}
       <Dialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>
-        <DialogContent className="bg-card border-border">
+      <DialogContent className="bg-card border-border w-[calc(100%-2rem)] max-w-md mx-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-primary">Withdraw Funds</DialogTitle>
           </DialogHeader>
