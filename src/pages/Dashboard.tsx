@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Wallet, Tag, User, RefreshCw, Clock, CheckCircle2, HelpCircle, Banknote, Lock, ArrowUpCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -341,6 +341,19 @@ const UpgradeModal = ({ onClose, onUpgrade }: { onClose: () => void; onUpgrade: 
   </div>
 );
 
+const fakeEarners = [
+  { name: "James", phone: "0712***890", location: "Nairobi", amount: 95 },
+  { name: "Mary", phone: "0798***234", location: "Mombasa", amount: 85 },
+  { name: "David", phone: "0723***567", location: "Kisumu", amount: 120 },
+  { name: "Sarah", phone: "0745***112", location: "Eldoret", amount: 75 },
+  { name: "Michael", phone: "0701***445", location: "Nakuru", amount: 105 },
+  { name: "Grace", phone: "0733***678", location: "Thika", amount: 88 },
+  { name: "Peter", phone: "0756***321", location: "Nyeri", amount: 62 },
+  { name: "Ann", phone: "0710***889", location: "Machakos", amount: 95 },
+  { name: "Kevin", phone: "0769***102", location: "Naivasha", amount: 110 },
+  { name: "Lucy", phone: "0741***556", location: "Kisii", amount: 82 },
+];
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, account, refreshAccount } = useAuth();
@@ -348,6 +361,22 @@ const Dashboard = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [surveysCompletedToday, setSurveysCompletedToday] = useState(0);
+  const [notifications, setNotifications] = useState<{ id: number; name: string; phone: string; location: string; amount: number }[]>([]);
+
+  // Fake earnings popup ticker
+  useEffect(() => {
+    let idCounter = 0;
+    const interval = setInterval(() => {
+      const earner = fakeEarners[Math.floor(Math.random() * fakeEarners.length)];
+      const id = ++idCounter;
+      setNotifications(prev => [...prev.slice(-2), { ...earner, id }]);
+      // Auto-remove after 4 seconds
+      setTimeout(() => {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+      }, 4000);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const accountType = account?.account_type || "free";
   const balance = account?.balance || 0;
@@ -394,6 +423,21 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <DashboardNav />
+
+      {/* Fake earnings notifications */}
+      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+        {notifications.map((n) => (
+          <div
+            key={n.id}
+            className="animate-slide-in-right bg-card border border-border rounded-lg px-4 py-3 shadow-card max-w-xs"
+          >
+            <p className="text-sm text-foreground">
+              <span className="font-bold text-primary">{n.name}</span> ({n.phone}) from {n.location} just earned{" "}
+              <span className="font-bold text-primary">Ksh {n.amount}</span>
+            </p>
+          </div>
+        ))}
+      </div>
 
       {/* Balance Card */}
       <div className="container mx-auto px-4 mt-6">
