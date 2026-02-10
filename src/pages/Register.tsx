@@ -60,7 +60,7 @@ const Register = () => {
       // Create user_account for this user
       await supabase.from("user_accounts").insert({
         user_id: data.user.id,
-        phone_number: "",
+        phone_number: data.user.id,
         account_type: "free",
         surveys_per_day: 1,
         min_withdrawal: 0,

@@ -423,12 +423,6 @@ const Dashboard = () => {
               <Button onClick={() => setShowWithdrawDialog(true)} className="gradient-green text-primary-foreground gap-2">
                 <Banknote className="h-4 w-4" /> Withdraw
               </Button>
-              <Button onClick={() => navigate("/profile")} variant="outline" className="border-primary text-primary gap-2">
-                <User className="h-4 w-4" /> Profile
-              </Button>
-              <Button onClick={() => navigate("/referrals")} variant="outline" className="border-primary text-primary gap-2">
-                <RefreshCw className="h-4 w-4" /> Referrals
-              </Button>
             </div>
           </div>
         </div>
