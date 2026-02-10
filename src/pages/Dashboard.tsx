@@ -361,36 +361,24 @@ const Dashboard = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [surveysCompletedToday, setSurveysCompletedToday] = useState(0);
+  const [completedSurveyIds, setCompletedSurveyIds] = useState<number[]>([]);
   const [notifications, setNotifications] = useState<{ id: number; name: string; phone: string; location: string; amount: number }[]>([]);
 
-  // Fake earnings popup ticker
+  // Sync surveys completed today from account data
   useEffect(() => {
-    let idCounter = 0;
-    const interval = setInterval(() => {
-      const earner = fakeEarners[Math.floor(Math.random() * fakeEarners.length)];
-      const id = ++idCounter;
-      setNotifications(prev => [...prev.slice(-2), { ...earner, id }]);
-      // Auto-remove after 4 seconds
-      setTimeout(() => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
-      }, 4000);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const accountType = account?.account_type || "free";
-  const balance = account?.balance || 0;
-  const pkg = packageLimits[accountType] || packageLimits.free;
-
-  // Load surveys completed today from DB
-  useState(() => {
     if (account) {
       const today = new Date().toISOString().split("T")[0];
       if (account.last_survey_date === today) {
         setSurveysCompletedToday(account.surveys_completed_today);
+      } else {
+        setSurveysCompletedToday(0);
       }
     }
-  });
+  }, [account]);
+
+  const accountType = account?.account_type || "free";
+  const balance = account?.balance || 0;
+  const pkg = packageLimits[accountType] || packageLimits.free;
 
   const handleTakeSurvey = (survey: typeof surveys[0]) => {
     const limit = account?.surveys_per_day || 1;
@@ -402,12 +390,13 @@ const Dashboard = () => {
   };
 
   const handleSurveyComplete = async () => {
-    if (!user || !account) return;
+    if (!user || !account || !activeSurvey) return;
     const newCount = surveysCompletedToday + 1;
     setSurveysCompletedToday(newCount);
+    setCompletedSurveyIds(prev => [...prev, activeSurvey.id]);
 
     const today = new Date().toISOString().split("T")[0];
-    const newBalance = balance + (activeSurvey?.payout || 0);
+    const newBalance = balance + activeSurvey.payout;
 
     await supabase.from("user_accounts").update({
       surveys_completed_today: newCount,
@@ -419,6 +408,7 @@ const Dashboard = () => {
   };
 
   const canWithdraw = accountType !== "free" && balance >= pkg.minWithdraw;
+  const availableSurveys = surveys.filter(s => !completedSurveyIds.includes(s.id));
 
   return (
     <div className="min-h-screen bg-background">
@@ -486,7 +476,7 @@ const Dashboard = () => {
           </div>
 
           <div className="space-y-3">
-            {surveys.map((s) => (
+            {availableSurveys.map((s) => (
               <div key={s.id} className="rounded-lg border border-border bg-secondary/30 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <h3 className="font-display font-bold text-primary truncate">{s.name}</h3>
