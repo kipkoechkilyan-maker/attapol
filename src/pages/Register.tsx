@@ -70,14 +70,7 @@ const Register = () => {
 
     setLoading(false);
 
-    if (data.session) {
-      navigate("/dashboard");
-    } else {
-      toast({
-        title: "Check your email",
-        description: "We sent you a confirmation link. Please verify your email to log in.",
-      });
-    }
+    navigate("/dashboard");
   };
 
   return (
