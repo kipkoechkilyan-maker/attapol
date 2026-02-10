@@ -50,7 +50,8 @@ serve(async (req) => {
       });
     }
 
-    const isSuccess = paymentStatus === 'Success' || paymentStatus === 'success' || paymentStatus === 'COMPLETED' || paymentStatus === 'completed';
+    const statusLower = (paymentStatus || '').toString().toLowerCase();
+    const isSuccess = statusLower === 'success' || statusLower === 'completed' || statusLower === 'payment.success';
     const newStatus = isSuccess ? 'completed' : 'failed';
 
     await supabase.from('payments').update({
