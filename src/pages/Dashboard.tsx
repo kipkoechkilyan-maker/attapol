@@ -425,14 +425,14 @@ const Dashboard = () => {
       <DashboardNav />
 
       {/* Fake earnings notifications */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none max-w-[220px]">
         {notifications.map((n) => (
           <div
             key={n.id}
-            className="animate-slide-in-right bg-card border border-border rounded-lg px-4 py-3 shadow-card max-w-xs"
+            className="animate-slide-in-right bg-card border border-border rounded-lg px-3 py-2 shadow-card"
           >
-            <p className="text-sm text-foreground">
-              <span className="font-bold text-primary">{n.name}</span> ({n.phone}) from {n.location} just earned{" "}
+            <p className="text-xs text-foreground">
+              <span className="font-bold text-primary">{n.name}</span> ({n.phone}) just earned{" "}
               <span className="font-bold text-primary">Ksh {n.amount}</span>
             </p>
           </div>
