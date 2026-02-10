@@ -443,10 +443,10 @@ const Dashboard = () => {
 
           <div className="space-y-3">
             {surveys.map((s) => (
-              <div key={s.id} className="rounded-lg border border-border bg-secondary/30 p-4 flex items-center justify-between">
-                <div>
-                  <h3 className="font-display font-bold text-primary">{s.name}</h3>
-                  <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+              <div key={s.id} className="rounded-lg border border-border bg-secondary/30 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-display font-bold text-primary truncate">{s.name}</h3>
+                  <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1"><HelpCircle className="h-3.5 w-3.5" /> Questions: <span className="text-primary font-semibold">{s.questions}</span></span>
                     <span className="flex items-center gap-1">
                       <Banknote className="h-3.5 w-3.5" /> Payout:
@@ -456,7 +456,7 @@ const Dashboard = () => {
                 </div>
                 <Button
                   onClick={() => handleTakeSurvey(s)}
-                  className="gradient-green text-primary-foreground font-semibold"
+                  className="gradient-green text-primary-foreground font-semibold shrink-0 w-full sm:w-auto"
                 >
                   Take Survey
                 </Button>
