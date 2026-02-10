@@ -1,7 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Wallet, Tag, User, RefreshCw, Clock, CheckCircle2, HelpCircle, Banknote, Lock } from "lucide-react";
+import { Wallet, Tag, User, RefreshCw, Clock, CheckCircle2, HelpCircle, Banknote, Lock, ArrowUpCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import DashboardNav from "@/components/DashboardNav";
 
 const surveys = [
@@ -248,6 +254,14 @@ const surveys = [
   },
 ];
 
+const packageLimits: Record<string, { surveys: number; minWithdraw: number; name: string }> = {
+  free: { surveys: 1, minWithdraw: 0, name: "Free Account" },
+  basic: { surveys: 10, minWithdraw: 3000, name: "Business Basic" },
+  premium: { surveys: 15, minWithdraw: 2500, name: "Business Premium" },
+  expert: { surveys: 20, minWithdraw: 2000, name: "Business Expert" },
+  platinum: { surveys: 40, minWithdraw: 1000, name: "PLATINUM" },
+};
+
 const SurveyModal = ({ survey, onClose, onComplete }: { survey: typeof surveys[0]; onClose: () => void; onComplete: () => void }) => {
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
@@ -329,13 +343,19 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [activeSurvey, setActiveSurvey] = useState<typeof surveys[0] | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [surveysCompletedToday, setSurveysCompletedToday] = useState(0);
   const [accountType, setAccountType] = useState("free");
+  const [balance, setBalance] = useState(0);
+
+  const pkg = packageLimits[accountType] || packageLimits.free;
 
   useEffect(() => {
-    // Load account type and daily survey count
     const stored = localStorage.getItem("attapoll_account");
     if (stored) setAccountType(stored);
+
+    const bal = localStorage.getItem("attapoll_balance");
+    if (bal) setBalance(Number(bal));
 
     const today = new Date().toDateString();
     const dailyData = localStorage.getItem("attapoll_daily_surveys");
@@ -349,10 +369,8 @@ const Dashboard = () => {
     }
   }, []);
 
-  const maxSurveys = accountType === "free" ? 1 : accountType === "basic" ? 10 : accountType === "premium" ? 15 : accountType === "expert" ? 20 : 40;
-
   const handleTakeSurvey = (survey: typeof surveys[0]) => {
-    if (surveysCompletedToday >= maxSurveys) {
+    if (surveysCompletedToday >= pkg.surveys) {
       setShowUpgradeModal(true);
       return;
     }
@@ -364,7 +382,16 @@ const Dashboard = () => {
     setSurveysCompletedToday(newCount);
     const today = new Date().toDateString();
     localStorage.setItem("attapoll_daily_surveys", JSON.stringify({ date: today, count: newCount }));
+
+    // Add payout to balance
+    if (activeSurvey) {
+      const newBalance = balance + activeSurvey.payout;
+      setBalance(newBalance);
+      localStorage.setItem("attapoll_balance", String(newBalance));
+    }
   };
+
+  const canWithdraw = accountType !== "free" && balance >= pkg.minWithdraw;
 
   return (
     <div className="min-h-screen bg-background">
@@ -375,22 +402,33 @@ const Dashboard = () => {
         <div className="rounded-xl bg-card border border-border p-6 shadow-card">
           <div className="text-center mb-4">
             <h2 className="font-display text-xl font-bold text-primary">Total Balance</h2>
-            <p className="text-2xl font-bold text-foreground">Ksh 0.00</p>
+            <p className="text-2xl font-bold text-foreground">Ksh {balance.toLocaleString()}</p>
+            <span className="inline-block mt-1 gradient-green text-primary-foreground px-3 py-0.5 rounded-full text-xs font-bold">
+              {pkg.name}
+            </span>
           </div>
           <div className="border-t border-border pt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Wallet className="h-4 w-4" /> Your Balance: <span className="text-foreground font-bold">Ksh 0.00</span>
+                <Wallet className="h-4 w-4" /> Your Balance: <span className="text-foreground font-bold">Ksh {balance.toLocaleString()}</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Tag className="h-4 w-4" /> Loyalty Points: <span className="text-foreground font-bold">0</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle2 className="h-4 w-4" /> Surveys today: <span className="text-primary font-bold">{surveysCompletedToday}/{maxSurveys}</span>
+                <CheckCircle2 className="h-4 w-4" /> Surveys today: <span className="text-primary font-bold">{surveysCompletedToday}/{pkg.surveys}</span>
               </div>
+              {accountType !== "free" && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Banknote className="h-4 w-4" /> Min withdraw: <span className="text-foreground font-bold">Ksh {pkg.minWithdraw.toLocaleString()}</span>
+                </div>
+              )}
             </div>
             <div className="flex flex-col gap-2">
-              <Button onClick={() => navigate("/profile")} className="gradient-green text-primary-foreground gap-2">
+              <Button onClick={() => setShowWithdrawDialog(true)} className="gradient-green text-primary-foreground gap-2">
+                <Banknote className="h-4 w-4" /> Withdraw
+              </Button>
+              <Button onClick={() => navigate("/profile")} variant="outline" className="border-primary text-primary gap-2">
                 <User className="h-4 w-4" /> Profile
               </Button>
               <Button onClick={() => navigate("/referrals")} variant="outline" className="border-primary text-primary gap-2">
@@ -410,7 +448,7 @@ const Dashboard = () => {
             <span className="text-sm text-primary-foreground font-medium">
               {accountType === "free"
                 ? "Free account — 1 survey per day. Upgrade to unlock more!"
-                : "Surveys are automatically filtered based on your location"}
+                : `${pkg.name} — ${pkg.surveys} surveys per day`}
             </span>
           </div>
 
@@ -452,6 +490,66 @@ const Dashboard = () => {
           onUpgrade={() => { setShowUpgradeModal(false); navigate("/upgrade"); }}
         />
       )}
+
+      {/* Withdraw Dialog */}
+      <Dialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="font-display text-primary">Withdraw Funds</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {accountType === "free" ? (
+              <div className="text-center space-y-4">
+                <AlertCircle className="h-16 w-16 text-accent mx-auto" />
+                <h3 className="font-display text-lg font-bold text-foreground">Free Account</h3>
+                <p className="text-muted-foreground">
+                  Free accounts cannot withdraw. Please <span className="text-primary font-bold">upgrade your account</span> to enable withdrawals.
+                </p>
+                <Button onClick={() => { setShowWithdrawDialog(false); navigate("/upgrade"); }} className="gradient-green text-primary-foreground font-semibold w-full">
+                  <ArrowUpCircle className="h-4 w-4 mr-2" /> Upgrade Account
+                </Button>
+              </div>
+            ) : !canWithdraw ? (
+              <div className="text-center space-y-4">
+                <AlertCircle className="h-16 w-16 text-accent mx-auto" />
+                <h3 className="font-display text-lg font-bold text-foreground">Insufficient Balance</h3>
+                <p className="text-muted-foreground">
+                  Your current balance is <span className="text-primary font-bold">Ksh {balance.toLocaleString()}</span>.
+                  The minimum withdrawal for your <span className="text-primary font-bold">{pkg.name}</span> account is
+                  <span className="text-primary font-bold"> Ksh {pkg.minWithdraw.toLocaleString()}</span>.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  You need <span className="text-primary font-bold">Ksh {(pkg.minWithdraw - balance).toLocaleString()}</span> more to withdraw.
+                </p>
+                <Button onClick={() => setShowWithdrawDialog(false)} variant="outline" className="border-primary text-primary w-full">
+                  Keep Earning
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center space-y-4">
+                <CheckCircle2 className="h-16 w-16 text-primary mx-auto" />
+                <h3 className="font-display text-lg font-bold text-foreground">Ready to Withdraw!</h3>
+                <p className="text-muted-foreground">
+                  Your balance of <span className="text-primary font-bold">Ksh {balance.toLocaleString()}</span> is eligible for withdrawal.
+                </p>
+                <div className="gradient-green rounded-lg p-3">
+                  <p className="text-primary-foreground text-sm font-medium">
+                    Funds will be sent to your registered M-Pesa number. Make sure your payment details are up to date in your profile.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Button onClick={() => { setShowWithdrawDialog(false); navigate("/profile"); }} className="gradient-green text-primary-foreground font-semibold">
+                    Confirm Payment Details & Withdraw
+                  </Button>
+                  <Button onClick={() => setShowWithdrawDialog(false)} variant="outline" className="border-primary text-primary">
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

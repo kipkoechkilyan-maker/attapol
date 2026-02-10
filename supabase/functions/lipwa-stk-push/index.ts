@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,14 +13,14 @@ serve(async (req) => {
 
   try {
     const LIPWA_API_KEY = Deno.env.get('LIPWA_API_KEY');
-    if (!LIPWA_API_KEY) {
-      throw new Error('LIPWA_API_KEY is not configured');
-    }
+    if (!LIPWA_API_KEY) throw new Error('LIPWA_API_KEY is not configured');
 
     const LIPWA_CHANNEL_ID = Deno.env.get('LIPWA_CHANNEL_ID');
-    if (!LIPWA_CHANNEL_ID) {
-      throw new Error('LIPWA_CHANNEL_ID is not configured');
-    }
+    if (!LIPWA_CHANNEL_ID) throw new Error('LIPWA_CHANNEL_ID is not configured');
+
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { amount, phone_number, package_name } = await req.json();
 
@@ -30,27 +31,41 @@ serve(async (req) => {
       );
     }
 
-    // Validate phone number format (Kenyan)
     const cleanPhone = phone_number.replace(/\s/g, '');
     const phoneRegex = /^(\+254|254|0)[17]\d{8}$/;
     if (!phoneRegex.test(cleanPhone)) {
       return new Response(
-        JSON.stringify({ error: 'Invalid phone number format. Use format like 0712345678 or +254712345678' }),
+        JSON.stringify({ error: 'Invalid phone number format' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Format phone to +254
     let formattedPhone = cleanPhone;
-    if (formattedPhone.startsWith('0')) {
-      formattedPhone = '+254' + formattedPhone.slice(1);
-    } else if (formattedPhone.startsWith('254')) {
-      formattedPhone = '+' + formattedPhone;
-    }
+    if (formattedPhone.startsWith('0')) formattedPhone = '+254' + formattedPhone.slice(1);
+    else if (formattedPhone.startsWith('254')) formattedPhone = '+' + formattedPhone;
 
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const apiRef = `UPGRADE-${package_name}-${Date.now()}`;
     const callbackUrl = `${SUPABASE_URL}/functions/v1/lipwa-callback`;
 
+    // Create payment record in DB
+    const { data: paymentRecord, error: dbError } = await supabase
+      .from('payments')
+      .insert({
+        phone_number: formattedPhone,
+        amount: Number(amount),
+        package_name,
+        status: 'pending',
+        api_ref: apiRef,
+      })
+      .select()
+      .single();
+
+    if (dbError) {
+      console.error('DB insert error:', dbError);
+      throw new Error('Failed to create payment record');
+    }
+
+    // Send STK Push via Lipwa
     const response = await fetch('https://pay.lipwa.app/api/payments', {
       method: 'POST',
       headers: {
@@ -62,18 +77,20 @@ serve(async (req) => {
         callback_url: callbackUrl,
         channel_id: LIPWA_CHANNEL_ID,
         phone_number: formattedPhone,
-        api_ref: `UPGRADE-${package_name}-${Date.now()}`,
+        api_ref: apiRef,
       }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
+      // Update payment as failed
+      await supabase.from('payments').update({ status: 'failed' }).eq('id', paymentRecord.id);
       throw new Error(`Lipwa API error [${response.status}]: ${JSON.stringify(data)}`);
     }
 
     return new Response(
-      JSON.stringify({ success: true, data }),
+      JSON.stringify({ success: true, payment_id: paymentRecord.id, api_ref: apiRef }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: unknown) {

@@ -1,8 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const packageConfig: Record<string, { surveys_per_day: number; min_withdrawal: number }> = {
+  basic: { surveys_per_day: 10, min_withdrawal: 3000 },
+  premium: { surveys_per_day: 15, min_withdrawal: 2500 },
+  expert: { surveys_per_day: 20, min_withdrawal: 2000 },
+  platinum: { surveys_per_day: 40, min_withdrawal: 1000 },
 };
 
 serve(async (req) => {
@@ -11,21 +19,80 @@ serve(async (req) => {
   }
 
   try {
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
     const body = await req.json();
     console.log('Lipwa callback received:', JSON.stringify(body));
 
-    // Process the callback - log payment confirmation
-    // In production, update user account type in database
+    // Lipwa sends: api_ref, status, phone_number, amount, reference etc.
+    const apiRef = body.api_ref;
+    const paymentStatus = body.payment_status || body.status;
+    const lipwaReference = body.reference || body.checkout_request_id || '';
 
-    return new Response(
-      JSON.stringify({ success: true }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    if (!apiRef) {
+      return new Response(JSON.stringify({ error: 'Missing api_ref' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Find the payment record
+    const { data: payment, error: findError } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('api_ref', apiRef)
+      .maybeSingle();
+
+    if (findError || !payment) {
+      console.error('Payment not found:', apiRef, findError);
+      return new Response(JSON.stringify({ error: 'Payment not found' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const isSuccess = paymentStatus === 'Success' || paymentStatus === 'success' || paymentStatus === 'COMPLETED' || paymentStatus === 'completed';
+    const newStatus = isSuccess ? 'completed' : 'failed';
+
+    // Update payment status
+    await supabase.from('payments').update({
+      status: newStatus,
+      lipwa_reference: lipwaReference,
+    }).eq('id', payment.id);
+
+    // If successful, upgrade user account
+    if (isSuccess) {
+      const config = packageConfig[payment.package_name] || packageConfig.basic;
+
+      const { data: existingAccount } = await supabase
+        .from('user_accounts')
+        .select('*')
+        .eq('phone_number', payment.phone_number)
+        .maybeSingle();
+
+      if (existingAccount) {
+        await supabase.from('user_accounts').update({
+          account_type: payment.package_name,
+          surveys_per_day: config.surveys_per_day,
+          min_withdrawal: config.min_withdrawal,
+        }).eq('phone_number', payment.phone_number);
+      } else {
+        await supabase.from('user_accounts').insert({
+          phone_number: payment.phone_number,
+          account_type: payment.package_name,
+          surveys_per_day: config.surveys_per_day,
+          min_withdrawal: config.min_withdrawal,
+        });
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   } catch (error: unknown) {
     console.error('Lipwa callback error:', error);
-    return new Response(
-      JSON.stringify({ success: false }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ success: false }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 });

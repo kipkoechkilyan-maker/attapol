@@ -14,7 +14,81 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      payments: {
+        Row: {
+          amount: number
+          api_ref: string | null
+          created_at: string
+          id: string
+          lipwa_reference: string | null
+          package_name: string
+          phone_number: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          api_ref?: string | null
+          created_at?: string
+          id?: string
+          lipwa_reference?: string | null
+          package_name: string
+          phone_number: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          api_ref?: string | null
+          created_at?: string
+          id?: string
+          lipwa_reference?: string | null
+          package_name?: string
+          phone_number?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_accounts: {
+        Row: {
+          account_type: string
+          balance: number
+          created_at: string
+          id: string
+          last_survey_date: string | null
+          min_withdrawal: number
+          phone_number: string
+          surveys_completed_today: number
+          surveys_per_day: number
+          updated_at: string
+        }
+        Insert: {
+          account_type?: string
+          balance?: number
+          created_at?: string
+          id?: string
+          last_survey_date?: string | null
+          min_withdrawal?: number
+          phone_number: string
+          surveys_completed_today?: number
+          surveys_per_day?: number
+          updated_at?: string
+        }
+        Update: {
+          account_type?: string
+          balance?: number
+          created_at?: string
+          id?: string
+          last_survey_date?: string | null
+          min_withdrawal?: number
+          phone_number?: string
+          surveys_completed_today?: number
+          surveys_per_day?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
