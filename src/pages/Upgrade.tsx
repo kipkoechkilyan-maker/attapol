@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { CheckCircle2, ArrowRight, Phone, Loader2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ type PaymentState = 'idle' | 'sending' | 'waiting' | 'success' | 'failed';
 
 const Upgrade = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { user, refreshAccount } = useAuth();
   const [selectedPackage, setSelectedPackage] = useState<typeof packages[0] | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -189,8 +191,8 @@ const Upgrade = () => {
                 Your account has been upgraded to <span className="text-primary font-bold">{selectedPackage?.name}</span>.
                 You now have <span className="text-primary font-bold">{selectedPackage?.surveys} surveys per day</span>!
               </p>
-              <Button onClick={closeDialog} className="gradient-green text-primary-foreground font-semibold w-full">
-                Back to Surveys
+              <Button onClick={() => { closeDialog(); navigate("/dashboard"); }} className="gradient-green text-primary-foreground font-semibold w-full">
+                Go to Dashboard
               </Button>
             </div>
           )}
