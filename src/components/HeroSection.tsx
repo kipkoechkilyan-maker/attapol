@@ -37,10 +37,10 @@ const HeroSection = () => {
             </div>
 
             <div className="flex flex-wrap gap-3 justify-center md:justify-start mb-6">
-              <a href="#" className="gradient-green gradient-green-hover px-6 py-3 rounded-full font-semibold text-primary-foreground transition-all">
+              <a href="/register" className="gradient-green gradient-green-hover px-6 py-3 rounded-full font-semibold text-primary-foreground transition-all">
                 Sign Up
               </a>
-              <a href="#" className="border border-primary px-6 py-3 rounded-full font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-all">
+              <a href="/login" className="border border-primary px-6 py-3 rounded-full font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-all">
                 Login
               </a>
             </div>
